@@ -1,104 +1,117 @@
 // Copyright 2018 The Flutter team. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// 加减计数demo
+// 购物车demo
 
 import 'package:flutter/material.dart';
-
-//
-class CounterDisplay extends StatelessWidget {
-  CounterDisplay({this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text('Count: $count');
-  }
+class Product {
+  const Product({this.name});
+  final String name;
 }
 
-class CounterIncrementor extends StatelessWidget {
-  CounterIncrementor({this.onPressed, this.btnText = 'btn'});
+typedef void CartChangedCallback(Product product, bool inCart);
 
-  final VoidCallback onPressed;
-  String btnText;
+class ShoppingListItem extends StatelessWidget {
+  ShoppingListItem({Product product, this.inCart, this.onCartChanged})
+      : product = product,
+        super(key: ObjectKey(product));
+
+  final Product product;
+  final bool inCart;
+  final CartChangedCallback onCartChanged;
+
+  Color _getColor(BuildContext context) {
+    // The theme depends on the BuildContext because different parts of the tree
+    // can have different themes.  The BuildContext indicates where the build is
+    // taking place and therefore which theme to use.
+
+    return inCart ? Colors.black54 : Theme.of(context).primaryColor;
+  }
+
+  TextStyle _getTextStyle(BuildContext context) {
+    if (!inCart) return null;
+
+    return TextStyle(
+      color: Colors.black54,
+      decoration: TextDecoration.lineThrough,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return RaisedButton(
-      onPressed: onPressed,
-      child: Text(btnText),
+    return ListTile(
+      onTap: () {
+        onCartChanged(product, inCart);
+      },
+      leading: CircleAvatar(
+        backgroundColor: _getColor(context),
+        child: Text(product.name[0]),
+      ),
+      title: Text(product.name, style: _getTextStyle(context)),
     );
   }
 }
 
-class Counter extends StatefulWidget {
+class ShoppingList extends StatefulWidget {
+  ShoppingList({Key key, this.products}) : super(key: key);
+
+  final List<Product> products;
+
+  // The framework calls createState the first time a widget appears at a given
+  // location in the tree. If the parent rebuilds and uses the same type of
+  // widget (with the same key), the framework re-uses the State object
+  // instead of creating a new State object.
+
   @override
-  _CounterState createState() => _CounterState();
+  _ShoppingListState createState() => _ShoppingListState();
 }
 
-class _CounterState extends State<Counter> {
-  int _counter = 0;
+class _ShoppingListState extends State<ShoppingList> {
+  Set<Product> _shoppingCart = Set<Product>();
 
-  void _increment1() {
+  void _handleCartChanged(Product product, bool inCart) {
     setState(() {
-      ++_counter;
-    });
-  }
+      // When a user changes what's in the cart, you need to change
+      // _shoppingCart inside a setState call to trigger a rebuild.
+      // The framework then calls build, below,
+      // which updates the visual appearance of the app.
 
-  void _increment2() {
-    setState(() {
-      --_counter;
+      if (!inCart)
+        _shoppingCart.add(product);
+      else
+        _shoppingCart.remove(product);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(children: <Widget>[
-        CounterIncrementor(onPressed: _increment1, btnText: '加一'),
-        CounterDisplay(count: _counter),
-        CounterIncrementor(onPressed: _increment2, btnText: '减一',),
-      ]),
-    );
-  }
-}
-
-class TutorialHome extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Scaffold is a layout for the major Material Components.
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.menu),
-          tooltip: 'Navigation menu',
-          onPressed: null,
-        ),
-        title: Text('Example title'),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.search),
-            tooltip: 'Search',
-            onPressed: null,
-          ),
-        ],
+        title: Text('Shopping List'),
       ),
-      // body is the majority of the screen.
-      body: Center(
-        child: Counter(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Add', // used by assistive technologies
-        child: Icon(Icons.add),
-        onPressed: null,
+      body: ListView(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        children: widget.products.map((Product product) {
+          return ShoppingListItem(
+            product: product,
+            inCart: _shoppingCart.contains(product),
+            onCartChanged: _handleCartChanged,
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-void main() =>
-    runApp(MaterialApp(
-      title: 'My app', // used by the OS task switcher
-      home: TutorialHome(),
-    ));
+void main() {
+  runApp(MaterialApp(
+    title: 'Shopping App',
+    home: ShoppingList(
+      products: <Product>[
+        Product(name: 'Iphone 11'),
+        Product(name: 'Iphone 11pro'),
+        Product(name: 'Iphone 11ProMax'),
+      ],
+    ),
+  ));
+}
